@@ -1,1 +1,1 @@
-web: gunicorn eaze.wsgi
+web: gunicorn eaze.prod_wsgi
