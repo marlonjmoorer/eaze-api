@@ -25,7 +25,7 @@ SECRET_KEY = '@gh@-e(6oaj++45cgl&rf-^=drkl78=8rpua=v-cvxg%j4_-)c'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['eaze-app-api.herokuapp.com']
 
 
 # Application definition
