@@ -1,5 +1,5 @@
 *.pyc
-env/*
+venv/*
 .idea/*
 */migrations/*
 */dev_settings.py
