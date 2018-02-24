@@ -2,3 +2,4 @@
 env/*
 .idea/*
 */migrations/*
+*/dev_settings.py
