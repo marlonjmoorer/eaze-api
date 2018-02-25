@@ -13,14 +13,16 @@ Including another URLconf
     1. Import the include() function: from django.conf.urls import url, include
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
-from django.conf.urls import url
+
 from django.contrib import admin
 from django.conf.urls import url, include
 from rest_framework.authtoken import views as rest_framework_views
-
+from views import media
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^token/$', rest_framework_views.obtain_auth_token, name='token'),
     url(r'^', include('users.urls', namespace='users')),
     url(r'^', include('blog.urls', namespace='post')),
+    url(r'^media/(?P<filename>(.*))/$',media, name='media'),
+
 ]

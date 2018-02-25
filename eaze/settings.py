@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'blog',
     'rest_framework',
     'rest_framework.authtoken',
-    'corsheaders'
+    'corsheaders',
+    'storages',
 ]
 AUTH_USER_MODEL = 'users.User'
 
@@ -67,6 +68,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'eaze.urls'
+
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 TEMPLATES = [
     {

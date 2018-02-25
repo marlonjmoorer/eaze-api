@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+import os
+import uuid
+from django.conf import settings
 
 from django.shortcuts import render
-
+from django.core.files.storage import default_storage
 # Create your views here.
 from rest_framework.generics import ListCreateAPIView,RetrieveAPIView
 from rest_framework.parsers import FileUploadParser,JSONParser,MultiPartParser
@@ -11,6 +14,8 @@ from rest_framework.response import Response
 from models import  Post
 from serializers import  PostSerializer
 from rest_framework.permissions import AllowAny,BasePermission,SAFE_METHODS
+
+
 
 class IsListOrIsAuthenticated(BasePermission):
     def has_permission(self, request, view):
@@ -35,8 +40,11 @@ class PostList(ListCreateAPIView):
         if 'imageUrl' in self.request.data :
             url =  self.request.data["imageUrl"]
 
-        elif  self.request.FILES and  'imageFile' in self.request.FILES:
-            url=""
+        elif 'imageFile' in self.request.FILES:
+            file=self.request.FILES["imageFile"]
+
+            path=default_storage.save("%s/%s" % (uuid.uuid4(),file.name),file)
+            url= os.path.join(settings.MEDIA_URL,path)
 
         return  serializer.save(author=self.request.user,imageUrl=url,**self.kwargs)
 
