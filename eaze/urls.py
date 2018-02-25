@@ -22,4 +22,5 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^token/$', rest_framework_views.obtain_auth_token, name='token'),
     url(r'^', include('users.urls', namespace='users')),
+    url(r'^', include('blog.urls', namespace='post')),
 ]

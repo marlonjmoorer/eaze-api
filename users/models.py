@@ -17,6 +17,10 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):
         Token.objects.create(user=instance)
 
 class User(AbstractUser):
-  pass
+    @property
+    def full_name(self):
+        return self.first_name+" "+self.last_name
+
+
 
 

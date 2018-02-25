@@ -4,3 +4,48 @@ from __future__ import unicode_literals
 from django.shortcuts import render
 
 # Create your views here.
+from rest_framework.generics import ListCreateAPIView,RetrieveAPIView
+from rest_framework.parsers import FileUploadParser,JSONParser,MultiPartParser
+from rest_framework.response import Response
+
+from models import  Post
+from serializers import  PostSerializer
+from rest_framework.permissions import AllowAny,BasePermission,SAFE_METHODS
+
+class IsListOrIsAuthenticated(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated():
+            if request.method in SAFE_METHODS:
+                return True
+        else:
+            return True
+
+
+class PostList(ListCreateAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+    permission_classes = (IsListOrIsAuthenticated,)
+    parser_classes = (JSONParser,MultiPartParser,)
+    def get(self, request, *args, **kwargs):
+        post = Post.objects.all()
+        serializer = PostSerializer(post,many=True)
+        return Response(serializer.data)
+
+    def perform_create(self, serializer):
+        if 'imageUrl' in self.request.data :
+            url =  self.request.data["imageUrl"]
+
+        elif  self.request.FILES and  'imageFile' in self.request.FILES:
+            url=""
+
+        return  serializer.save(author=self.request.user,imageUrl=url,**self.kwargs)
+
+class PostDetail(RetrieveAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+
+
+    # def retrieve(self, request, *args,**kwargs):
+    #     instance = self.get_object()
+    #     serializer = self.get_serializer(instance)
+    #     return Response(serializer.data)

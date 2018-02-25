@@ -5,21 +5,25 @@ from users.models import  User
 
 class UserSerializer(serializers.ModelSerializer):
 
-    username= serializers.CharField(required=False)
-    email= serializers.EmailField(required=False)
+    username= serializers.CharField(required=True)
+    email= serializers.EmailField(required=True)
+    first_name=serializers.CharField(required=True)
+    last_name=serializers.CharField(required=True)
+    password= serializers.CharField(write_only=True)
 
 
     class Meta:
         model = User
-        fields = ('id', 'username','email')
+        fields = ('id', 'username','email','first_name','last_name','password')
 
 
     def create(self, validated_data):
-        """
-        Create and return a new `Snippet` instance, given the validated data.
-        """
 
-        return User.objects.create(**validated_data)
+        user=User.objects.create(**validated_data)
+        password = validated_data.pop('password')
+        user.set_password(password)
+        user.save()
+        return user
 
     def update(self, instance, validated_data):
         if 'password' in validated_data:
