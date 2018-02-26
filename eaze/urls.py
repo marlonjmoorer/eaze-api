@@ -17,10 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.conf.urls import url, include
 from rest_framework.authtoken import views as rest_framework_views
+from rest_framework_jwt.views import obtain_jwt_token
 from views import media
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^token/$', rest_framework_views.obtain_auth_token, name='token'),
+    url(r'^token/$', obtain_jwt_token, name='token'),
     url(r'^', include('users.urls', namespace='users')),
     url(r'^', include('blog.urls', namespace='post')),
     url(r'^media/(?P<filename>(.*))/$',media, name='media'),
