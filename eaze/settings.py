@@ -94,14 +94,7 @@ WSGI_APPLICATION = 'eaze.wsgi.application'
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'dc57dsdg3sn9a9',
-        'USER': 'aqkdlkcclplssz',
-        'PASSWORD': 'c7b88ed748a307008be2e5c0659930566fef20d70e41f29618fece5d0076a0f0',
-        'HOST':'ec2-184-72-219-186.compute-1.amazonaws.com',
-        'PORT':'5432',
-    }
+
 }
 
 
