@@ -3,3 +3,4 @@ venv/*
 .idea/*
 */migrations/*
 */dev_settings.py
+local.py
