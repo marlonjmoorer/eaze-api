@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from rest_framework.generics import ListCreateAPIView,RetrieveAPIView
+from django.template.defaultfilters import slugify
+from rest_framework.generics import ListCreateAPIView,RetrieveUpdateAPIView,GenericAPIView
 from rest_framework.parsers import FileUploadParser,JSONParser,MultiPartParser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from eaze.permissions import IsListOrIsAuthenticated
 from models import  Post,Comment
@@ -26,18 +28,18 @@ class PostList(ListCreateAPIView):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        return serializer.save(author=self.request.user, **self.kwargs)
+        slug=slugify(self.request.data['title'])
+        return serializer.save(author=self.request.user,slug=slug ,**self.kwargs)
 
 
-class PostDetail(RetrieveAPIView):
+class PostDetail(RetrieveUpdateAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
-
-    # def retrieve(self, request, *args,**kwargs):
-    #     instance = self.get_object()
-    #     serializer = self.get_serializer(instance)
-    #     return Response(serializer.data)
+    def retrieve(self, request, *args,**kwargs):
+        instance = Post.objects.get(slug=kwargs['slug'])
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 class CommentList(ListCreateAPIView):
     queryset = Comment.objects.all()
@@ -45,5 +47,5 @@ class CommentList(ListCreateAPIView):
     permission_classes = (IsListOrIsAuthenticated,)
 
     def perform_create(self, serializer):
-
-        return serializer.save(user=self.request.user, **self.kwargs)
+        post=Post.objects.get(slug=self.request.data['slug'])
+        return serializer.save(user=self.request.user,post=post, **self.kwargs)

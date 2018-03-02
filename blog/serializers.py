@@ -8,7 +8,10 @@ class CommentSerializer(serializers.ModelSerializer):
     user =  UserSerializer(read_only=True)
     class Meta:
         model=Comment
-        fields=("user","post","body","created")
+        fields=("user","body","created")
+    def create(self, validated_data):
+       comment=Comment.objects.create(**validated_data)
+       return comment
 
 class PostSerializer(serializers.ModelSerializer):
 
@@ -17,12 +20,11 @@ class PostSerializer(serializers.ModelSerializer):
     tags= serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     posted=serializers.DateField(required=False)
     author=serializers.SlugRelatedField(slug_field='full_name',read_only=True)
-    #imageUrl= serializers.CharField(required=False)
     comments = CommentSerializer(many=True,read_only=True)
 
     class Meta:
         model = Post
-        fields = ('id', 'title','body',"posted","tags",'author','image','comments')
+        fields = ('id', 'title','body',"posted","tags",'author','image','comments','slug')
 
 
 

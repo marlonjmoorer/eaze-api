@@ -23,7 +23,7 @@ class Post(models.Model):
     author = models.ForeignKey(User)
     imageUrl=models.CharField(max_length=500,null=True)
     image= models.ImageField(storage=default_storage,null=True,upload_to=createPath)
-
+    slug= models.SlugField(unique=True,null=True,max_length=255)
     def __str__(self):
         return self.title
 
