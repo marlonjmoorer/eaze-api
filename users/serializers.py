@@ -1,24 +1,28 @@
 
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
+
 from users.models import  User
 
 
 class UserSerializer(serializers.ModelSerializer):
 
-    username= serializers.CharField(required=True)
-    email= serializers.EmailField(required=True)
-    first_name=serializers.CharField(required=True)
-    last_name=serializers.CharField(required=True)
-    password= serializers.CharField(write_only=True)
+    email= serializers.EmailField(required=True,validators=[UniqueValidator(
+        queryset=User.objects.all(),
+        message="Email is already in use"
+    )])
+    first_name=serializers.CharField(write_only=True,required=True)
+    last_name=serializers.CharField(write_only=True,required=True)
+    password= serializers.CharField(write_only=True,min_length=8,
+                                    error_messages={"min_length":"Password must be 8 characters"})
 
 
     class Meta:
         model = User
-        fields = ('id', 'username','email','first_name','last_name','password')
+        fields = ('id','email','password','first_name','last_name','full_name')
 
 
     def create(self, validated_data):
-
         user=User.objects.create(**validated_data)
         password = validated_data.pop('password')
         user.set_password(password)

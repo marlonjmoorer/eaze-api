@@ -7,18 +7,13 @@ class PostSerializer(serializers.ModelSerializer):
     tags= serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     posted=serializers.DateField(required=False)
     author=serializers.SlugRelatedField(slug_field='full_name',read_only=True)
-    imageUrl= serializers.CharField(required=False)
+    #imageUrl= serializers.CharField(required=False)
 
     class Meta:
         model = Post
-        fields = ('id', 'title','body',"posted","tags",'author','imageUrl')
+        fields = ('id', 'title','body',"posted","tags",'author','image')
 
 
     def create(self, validated_data):
         return Post.objects.create(**validated_data)
 
-    def update(self, instance, validated_data):
-        if 'password' in validated_data:
-            password = validated_data.pop('password')
-            instance.set_password(password)
-        return super(Post, self).update(instance, validated_data)
