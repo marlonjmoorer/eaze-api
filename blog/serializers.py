@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from models import  Post
+from models import  Post, Comment
+from users.serializers import UserSerializer
+
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    user =  UserSerializer(read_only=True)
+    class Meta:
+        model=Comment
+        fields=("user","post","body","created")
+
 class PostSerializer(serializers.ModelSerializer):
 
     title=serializers.CharField(required=True)
@@ -8,12 +18,11 @@ class PostSerializer(serializers.ModelSerializer):
     posted=serializers.DateField(required=False)
     author=serializers.SlugRelatedField(slug_field='full_name',read_only=True)
     #imageUrl= serializers.CharField(required=False)
+    comments = CommentSerializer(many=True,read_only=True)
 
     class Meta:
         model = Post
-        fields = ('id', 'title','body',"posted","tags",'author','image')
+        fields = ('id', 'title','body',"posted","tags",'author','image','comments')
 
 
-    def create(self, validated_data):
-        return Post.objects.create(**validated_data)
 
