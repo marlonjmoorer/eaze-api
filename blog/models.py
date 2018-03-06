@@ -21,9 +21,10 @@ class Post(models.Model):
     tags = models.ManyToManyField(Tag)
     posted = models.DateField(db_index=True, auto_now_add=True)
     author = models.ForeignKey(User)
-    imageUrl=models.CharField(max_length=500,null=True)
     image= models.ImageField(storage=default_storage,null=True,upload_to=createPath)
     slug= models.SlugField(unique=True,null=True,max_length=255)
+    draft=models.BooleanField(default=False)
+
     def __str__(self):
         return self.title
 
@@ -35,3 +36,11 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.body
+
+class Like(models.Model):
+
+    user=models.ForeignKey(User)
+    post=models.ForeignKey(Post,related_name='likes')
+
+    def __str__(self):
+        return  "%s likes %s"%(self.user,self.post)

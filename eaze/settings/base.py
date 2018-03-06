@@ -115,6 +115,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_SECURE_URLS = False
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
