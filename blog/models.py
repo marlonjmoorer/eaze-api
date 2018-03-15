@@ -1,10 +1,14 @@
 from django.core.files.storage import default_storage
+from django.db import IntegrityError
 from django.db import models
+from django.db import transaction
+from django.db.models.signals import post_save,pre_save
+from django.dispatch import receiver
+
+from blog.static import blogImagePath, SOCIAL_TYPES,profileImagePath,generate_username
 from users.models import  User
 
 
-def createPath(instance, filename):
-    return "media/{authorId}/{id}/{file}".format(id=instance.id, authorId=instance.author.id, file=filename)
 
 
 class Tag(models.Model):
@@ -14,14 +18,22 @@ class Tag(models.Model):
     def __str__(self):
         return self.name
 
+class Profile(models.Model):
+    user = models.OneToOneField(User, related_name="profile")
+    about = models.CharField(max_length=1000)
+    photo = models.ImageField(storage=default_storage, null=True, upload_to=profileImagePath)
+    website = models.URLField(default='', blank=True)
+    joined = models.DateField(auto_now_add=True)
+    handle=models.CharField(max_length=255)
+
 
 class Post(models.Model):
     title = models.CharField(max_length=255)
     body = models.TextField(max_length=20000)
     tags = models.ManyToManyField(Tag)
     posted = models.DateField(db_index=True, auto_now_add=True)
-    author = models.ForeignKey(User)
-    image= models.ImageField(storage=default_storage,null=True,upload_to=createPath)
+    author = models.ForeignKey(Profile,related_name="posts")
+    image= models.ImageField(storage=default_storage,null=True,upload_to=blogImagePath)
     slug= models.SlugField(unique=True,null=True,max_length=255)
     draft=models.BooleanField(default=False)
 
@@ -38,9 +50,26 @@ class Comment(models.Model):
         return self.body
 
 class Like(models.Model):
-
     user=models.ForeignKey(User)
     post=models.ForeignKey(Post,related_name='likes')
 
     def __str__(self):
         return  "%s likes %s"%(self.user,self.post)
+
+
+
+
+class SocialLink(models.Model):
+    link_type=models.CharField(max_length=50)
+    profile = models.ForeignKey(Profile,related_name="links")
+    url=models.URLField(default='', blank=True)
+
+
+@receiver(post_save, sender=User)
+def create_profile(sender, instance=None, created=False, **kwargs):
+    if created:
+        handle= generate_username(instance.first_name,instance.last_name)
+        Profile.objects.create(user=instance, handle=handle)
+
+
+
