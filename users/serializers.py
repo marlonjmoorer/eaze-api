@@ -2,8 +2,15 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
+from blog.models import Profile
+
 from users.models import  User
 
+class NestedProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Profile
+        fields = ('handle',"joined","following")
 
 class UserSerializer(serializers.ModelSerializer):
 
@@ -16,11 +23,11 @@ class UserSerializer(serializers.ModelSerializer):
     last_name=serializers.CharField(write_only=True,required=True)
     password= serializers.CharField(write_only=True,min_length=8,
                                     error_messages={"min_length":"Password must be 8 characters"})
-
+    profile=NestedProfileSerializer()
 
     class Meta:
         model = User
-        fields = ('id','email','password','first_name','last_name')
+        fields = ('id','email','password','first_name','last_name','profile')
 
 
     def create(self, validated_data):

@@ -15,9 +15,11 @@ class ProfileSerializer(serializers.ModelSerializer):
     user=serializers.SlugRelatedField(slug_field='full_name',read_only=True)
     links=SocialLinkSerializer(many=True)
     posts=serializers.PrimaryKeyRelatedField(many=True,read_only=True)
+    following=serializers.PrimaryKeyRelatedField(many=True,queryset=Profile.objects.all())
+    followers=serializers.PrimaryKeyRelatedField(many=True,queryset=Profile.objects.all())
     class Meta:
         model = Profile
-        fields = ('about','website','joined','photo','handle',"user","links","posts")
+        fields = ("id",'about','website','joined','photo','handle',"user","links","posts","following","followers")
         depth = 2
 
     def update(self, instance, validated_data):

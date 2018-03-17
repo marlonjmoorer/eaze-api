@@ -25,6 +25,7 @@ class Profile(models.Model):
     website = models.URLField(default='', blank=True)
     joined = models.DateField(auto_now_add=True)
     handle=models.CharField(max_length=255)
+    following= models.ManyToManyField("self",symmetrical=False, blank=True,related_name="followers")
 
 
 class Post(models.Model):
@@ -50,7 +51,7 @@ class Comment(models.Model):
         return self.body
 
 class Like(models.Model):
-    user=models.ForeignKey(User)
+    profile = models.ForeignKey(Profile)
     post=models.ForeignKey(Post,related_name='likes')
 
     def __str__(self):

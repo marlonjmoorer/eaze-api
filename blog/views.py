@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from django.http import Http404
 from django.shortcuts import get_object_or_404,get_list_or_404
 from django.template.defaultfilters import slugify
-from rest_framework.generics import ListCreateAPIView,RetrieveUpdateAPIView,GenericAPIView, ListAPIView
+from rest_framework.generics import ListCreateAPIView,RetrieveUpdateAPIView, ListAPIView,UpdateAPIView
 from rest_framework.mixins import UpdateModelMixin
 from rest_framework.parsers import FileUploadParser,JSONParser,MultiPartParser
 from rest_framework.response import Response
@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from eaze.permissions import IsGetOrIsAuthenticated
 from models import Post, Comment, Profile, SocialLink
-from serializers import  PostSerializer, CommentSerializer, ProfileSerializer
+from serializers import PostSerializer, CommentSerializer, ProfileSerializer, SocialLinkSerializer
 
 from users.models import User
 import  json
@@ -40,6 +40,31 @@ class PostByAuthor(ListAPIView):
             serializer=PostSerializer(post,many=True)
 
         return Response(serializer.data)
+
+class FollowAuthor(UpdateAPIView):
+    queryset = Profile.objects.all()
+    serializer_class = ProfileSerializer
+
+    def patch(self, request, *args, **kwargs):
+        if request.user:
+            add=request.data["add"]
+            id= request.data["id"]
+            instance = get_object_or_404(self.queryset, user=request.user)
+            ex=instance.following.filter(pk=id).exists()
+            if not add and instance.following.filter(pk=id).exists():
+                instance.following.remove(id)
+            elif add :
+                instance.following.add(id)
+            else:
+                raise Http404
+            serializer = self.get_serializer(instance,data=request.data ,partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(serializer.data)
+
+        raise Http404
+
 
 class PostDetail(RetrieveUpdateAPIView):
 
@@ -82,13 +107,13 @@ class ProfileDetail(RetrieveUpdateAPIView):
 
     def patch(self, request, *args, **kwargs):
         if request.user:
-            data=request.data.copy()
             links=[]
-            if "links" in data:
-                 links=json.loads(data["links"])
-                 data["links"]=links
+            if "links" in request.data:
+                 links=json.loads(request.data["links"])
+                 linkSet=SocialLinkSerializer(data=links,many=True)
+                 linkSet.is_valid(raise_exception=True)
             instance = get_object_or_404(self.queryset, user=request.user)
-            serializer = self.get_serializer(instance, data=data,partial=True)
+            serializer = self.get_serializer(instance, data=request.data,partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save(links=links)
 

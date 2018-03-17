@@ -10,7 +10,8 @@ urlpatterns = [
     url(r'^post/(?P<slug>.+)/$', views.PostDetail.as_view(), name='post-list'),
     url(r'^comments/$', views.CommentList.as_view(), name='comment-list'),
     url(r'^profile/$',views.ProfileDetail.as_view(),name='profile'),
-    url(r'^profile/(?P<handle>.+)$',views.ProfileDetail.as_view(),name='author-post'),
-    url(r'^author/(?P<name>.+)/posts',views.PostByAuthor.as_view(),name='author-post')
+    url(r'^profile/(?P<handle>.+)$',views.ProfileDetail.as_view(),name='author'),
+    url(r'^author/(?P<name>.+)/posts',views.PostByAuthor.as_view(),name='author-post'),
+    url(r'^author/(?P<name>.+)/follow',views.FollowAuthor.as_view(),name='follow-author')
 
 ]
