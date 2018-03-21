@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from models import  Post, Comment, Profile,SocialLink
+from models import Post, Comment, Profile, SocialLink, Tag
 from users.serializers import UserSerializer
 
 
@@ -9,6 +9,10 @@ class SocialLinkSerializer(serializers.ModelSerializer):
         model = SocialLink
         fields = ("id",'link_type', 'url')
 
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields ='__all__'
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -60,7 +64,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     title=serializers.CharField(required=True)
     body= serializers.CharField(required=True)
-    tags= serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    tags=  TagSerializer(many=True) #serializers.PrimaryKeyRelatedField(many=True,queryset=Tag.objects.all())
     posted=serializers.DateField(required=False)
     author=ProfileSerializer(read_only=True)
     comments = CommentSerializer(many=True,read_only=True)
@@ -69,4 +73,26 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = ('id', 'title','body',"posted","tags",'author','image','comments','slug','draft')
 
+    def create(self, validated_data):
+        tags = validated_data.pop("tags", None)
+        instance =Post(**validated_data)
+        instance.save()
+        if tags:
+            tags =[Tag(**data).pk for data in tags]
+            instance.tags.add(*tags)
+        instance.save()
+        return instance
+
+
+    def update(self, instance, validated_data):
+
+        tags = validated_data.pop("tags",None)
+
+
+        if tags:
+            tags =[Tag(**data).pk for data in tags]
+            instance.tags.clear()
+            instance.tags.add(*tags)
+        instance.save()
+        return instance
 

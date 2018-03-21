@@ -13,7 +13,8 @@ from users.models import  User
 
 class Tag(models.Model):
     name = models.CharField(max_length=255)
-    description = models.CharField(max_length=255, null=True, default='')
+    slug = models.SlugField(unique=True, null=True, max_length=255)
+    # description = models.CharField(max_length=255, null=True, default='')
 
     def __str__(self):
         return self.name
@@ -31,12 +32,12 @@ class Profile(models.Model):
 class Post(models.Model):
     title = models.CharField(max_length=255)
     body = models.TextField(max_length=20000)
-    tags = models.ManyToManyField(Tag)
     posted = models.DateField(db_index=True, auto_now_add=True)
     author = models.ForeignKey(Profile,related_name="posts")
     image= models.ImageField(storage=default_storage,null=True,upload_to=blogImagePath)
     slug= models.SlugField(unique=True,null=True,max_length=255)
     draft=models.BooleanField(default=False)
+    tags= models.ManyToManyField(Tag,symmetrical=False, blank=True)
 
     def __str__(self):
         return self.title

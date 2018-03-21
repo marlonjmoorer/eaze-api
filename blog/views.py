@@ -3,17 +3,18 @@ from __future__ import unicode_literals
 from django.http import Http404
 from django.shortcuts import get_object_or_404,get_list_or_404
 from django.template.defaultfilters import slugify
-from rest_framework.generics import ListCreateAPIView,RetrieveUpdateAPIView, ListAPIView,UpdateAPIView
+from rest_framework.generics import ListCreateAPIView,RetrieveUpdateAPIView, ListAPIView,UpdateAPIView,RetrieveUpdateDestroyAPIView
 from rest_framework.mixins import UpdateModelMixin
-from rest_framework.parsers import FileUploadParser,JSONParser,MultiPartParser
+from rest_framework.parsers import FileUploadParser, JSONParser, MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from rest_framework import status
 from eaze.permissions import IsGetOrIsAuthenticated
-from models import Post, Comment, Profile, SocialLink
-from serializers import PostSerializer, CommentSerializer, ProfileSerializer, SocialLinkSerializer
+from models import Post, Comment, Profile, SocialLink, Tag
+from serializers import PostSerializer, CommentSerializer, ProfileSerializer, SocialLinkSerializer, TagSerializer
 
 from users.models import User
+
 import  json
 
 #/post
@@ -25,7 +26,13 @@ class PostList(ListCreateAPIView):
     def perform_create(self, serializer):
         slug=slugify(self.request.data['title'])
         author=Profile.objects.get(user=self.request.user)
-        return serializer.save(author=author,slug=slug ,**self.kwargs)
+        data = self.request.data.copy()
+        tags=[]
+        if "tags" in data:
+            tags = json.loads(data["tags"])
+            TagSerializer(data=tags, many=True).is_valid(raise_exception=True)
+            data.pop("tags")
+        return serializer.save(author=author,tags=tags,slug=slug ,**self.kwargs)
 
 class PostByAuthor(ListAPIView):
     queryset = Post.objects.all()
@@ -50,7 +57,7 @@ class FollowAuthor(UpdateAPIView):
             add=request.data["add"]
             id= request.data["id"]
             instance = get_object_or_404(self.queryset, user=request.user)
-            ex=instance.following.filter(pk=id).exists()
+
             if not add and instance.following.filter(pk=id).exists():
                 instance.following.remove(id)
             elif add :
@@ -66,26 +73,34 @@ class FollowAuthor(UpdateAPIView):
         raise Http404
 
 
-class PostDetail(RetrieveUpdateAPIView):
+class PostDetail(RetrieveUpdateDestroyAPIView):
 
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     permission_classes = (IsGetOrIsAuthenticated,)
-
+    parser_classes = (JSONParser,MultiPartParser,)
     def update(self, request, *args, **kwargs):
-        instance = get_object_or_404(self.queryset,slug=kwargs['slug'])
-        serializer= self.get_serializer(instance, data=request.data)
+        tags = []
+        data=request.data.copy()
+        if "tags" in request.data:
+            tags=json.loads(request.data["tags"])
+            TagSerializer(data=json.loads(request.data["tags"]),many=True).is_valid(raise_exception=True)
+            data.pop("tags")
+        instance = get_object_or_404(self.queryset, slug=kwargs['slug'])
+        serializer= self.get_serializer(instance, data=data,partial=True)
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        serializer.save(tags=tags)
         return Response(serializer.data)
-
-    
-
 
     def retrieve(self, request, *args,**kwargs):
         instance= get_object_or_404(self.queryset, slug=kwargs['slug'])
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+    def delete(self, request, *args, **kwargs):
+        instance = get_object_or_404(self.queryset,author=request.user.profile,pk=kwargs["id"])
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 
 #/comments
@@ -131,3 +146,20 @@ class ProfileDetail(RetrieveUpdateAPIView):
             raise Http404('No profile found')
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+
+class TagList(ListAPIView):
+        permission_classes = (IsGetOrIsAuthenticated,)
+        queryset = Tag.objects.all()
+        serializer_class = TagSerializer
+
+        def get_queryset(self):
+            """
+            Optionally restricts the returned purchases to a given user,
+            by filtering against a `username` query parameter in the URL.
+            """
+            queryset =  Tag.objects.all()
+            searchTearm= self.request.query_params.get('q', None)
+            if searchTearm is not None:
+                queryset = queryset.filter(name__icontains=searchTearm)
+            return queryset

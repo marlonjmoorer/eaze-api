@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.conf.urls import url, include
 from rest_framework.authtoken import views as rest_framework_views
-from rest_framework_jwt.views import obtain_jwt_token
+from rest_framework_jwt.views import obtain_jwt_token, refresh_jwt_token
 
 from views import ObtainUserAuthToken
 urlpatterns = [
@@ -26,5 +26,6 @@ urlpatterns = [
     url(r'^', include('users.urls', namespace='users')),
     url(r'^', include('blog.urls', namespace='post')),
     url(r'^login/$', ObtainUserAuthToken.as_view(), name='login'),
+    url(r'^refresh/$', refresh_jwt_token)
 
 ]
