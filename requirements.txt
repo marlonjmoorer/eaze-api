@@ -7,7 +7,6 @@ django-storages==1.6.5
 djangorestframework==3.7.7
 djangorestframework-jwt==1.11.0
 docutils==0.14
-futures==3.2.0
 gunicorn==19.7.1
 jmespath==0.9.3
 Pillow==5.0.0
