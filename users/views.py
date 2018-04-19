@@ -6,15 +6,14 @@ from django.shortcuts import render
 # Create your views here.
 from rest_framework.views import APIView
 
-from eaze.permissions import IsCreationOrIsAuthenticated
-from users.serializers import  UserSerializer
+from eaze.permissions import IsCreationOrIsAuthenticated,IsGetOrIsAuthenticated
 from users.models import User
 from rest_framework.response import Response
 from rest_framework import status,viewsets
 from rest_framework import generics
 from rest_framework.permissions import AllowAny,BasePermission
 
-
+from users.serializers import UserSerializer
 
 
 class UseViewSet(viewsets.ModelViewSet):

@@ -1,53 +1,180 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
-import os
-import uuid
-from django.conf import settings
-
-from django.shortcuts import render
-from django.core.files.storage import default_storage
-# Create your views here.
-from rest_framework.generics import ListCreateAPIView,RetrieveAPIView
-from rest_framework.parsers import FileUploadParser,JSONParser,MultiPartParser
+from django.http import Http404
+from django.shortcuts import get_object_or_404,get_list_or_404
+from django.template.defaultfilters import slugify
+from rest_framework.generics import ListCreateAPIView,RetrieveUpdateAPIView, ListAPIView,UpdateAPIView,RetrieveUpdateDestroyAPIView
+from rest_framework.mixins import UpdateModelMixin
+from rest_framework.parsers import FileUploadParser, JSONParser, MultiPartParser, FormParser
 from rest_framework.response import Response
-
-from eaze.permissions import IsListOrIsAuthenticated
-from models import  Post
-from serializers import  PostSerializer
-from rest_framework.permissions import AllowAny,BasePermission,SAFE_METHODS
-
-
+from rest_framework.views import APIView
+from rest_framework import status
+from eaze.permissions import IsGetOrIsAuthenticated
+from models import Post, Comment, Profile, SocialLink, Tag
+from serializers import PostSerializer, CommentSerializer, ProfileSerializer, SocialLinkSerializer, TagSerializer
 
 
+import  json
 
+#/post
 class PostList(ListCreateAPIView):
-    queryset = Post.objects.all()
+    queryset = Post.objects.filter(draft=False)
     serializer_class = PostSerializer
-    permission_classes = (IsListOrIsAuthenticated,)
+    permission_classes = (IsGetOrIsAuthenticated,)
     parser_classes = (JSONParser,MultiPartParser,)
-    def get(self, request, *args, **kwargs):
-        post = Post.objects.all()
-        serializer = PostSerializer(post,many=True)
-        return Response(serializer.data)
+
+    def get_queryset(self):
+        queryset = Post.objects.filter(draft=False)
+        if self.request.query_params:
+            if "tag" in self.request.query_params:
+                tag = self.request.query_params.get('tag')
+                queryset=queryset.filter(tags__id=tag)
+            if "q" in self.request.query_params:
+                query = self.request.query_params.get('q')
+                queryset = queryset.filter(slug__icontains=query)
+        return queryset
+
 
     def perform_create(self, serializer):
-        # if 'imageUrl' in self.request.data :
-        #     url =  self.request.data["imageUrl"]
-        #
-        # elif 'imageFile' in self.request.FILES:
-        #     file=self.request.FILES["imageFile"]
-        #
-        #     path=default_storage.save("%s/%s" % (uuid.uuid4(),file.name),file)
-        #     url= os.path.join(settings.MEDIA_URL,path)
+        slug=slugify(self.request.data['title'])
+        author=Profile.objects.get(user=self.request.user)
+        data = self.request.data.copy()
+        tags=[]
+        if "tags" in data:
+            tags=TagList.extractTags(data)
+        return serializer.save(author=author,tags=tags,slug=slug ,**self.kwargs)
 
-        return  serializer.save(author=self.request.user,**self.kwargs)
-
-class PostDetail(RetrieveAPIView):
+class PostByAuthor(ListAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
 
+    def list(self, request, *args, **kwargs):
+        name = kwargs["name"]
+        if(name):
+            user=Profile.objects.get(handle=name)
+            queryset=self.get_queryset()
+            post= queryset.filter(author_id=user.pk)
+            serializer=PostSerializer(post,many=True)
 
-    # def retrieve(self, request, *args,**kwargs):
-    #     instance = self.get_object()
-    #     serializer = self.get_serializer(instance)
-    #     return Response(serializer.data)
+        return Response(serializer.data)
+
+class FollowAuthor(UpdateAPIView):
+    queryset = Profile.objects.all()
+    serializer_class = ProfileSerializer
+
+    def patch(self, request, *args, **kwargs):
+        if request.user:
+            add=request.data["add"]
+            id= request.data["id"]
+            instance = get_object_or_404(self.queryset, user=request.user)
+
+            if not add and instance.following.filter(pk=id).exists():
+                instance.following.remove(id)
+            elif add :
+                instance.following.add(id)
+            else:
+                raise Http404
+            serializer = self.get_serializer(instance,data=request.data ,partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(serializer.data)
+
+        raise Http404
+
+
+class PostDetail(RetrieveUpdateDestroyAPIView):
+
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+    permission_classes = (IsGetOrIsAuthenticated,)
+    parser_classes = (JSONParser,MultiPartParser,)
+    def update(self, request, *args, **kwargs):
+        tags = []
+        data=request.data.copy()
+        if "tags" in data:
+            tags=TagList.extractTags(data)
+        instance = get_object_or_404(self.queryset, slug=kwargs['slug'])
+        serializer= self.get_serializer(instance, data=data,partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(tags=tags)
+        return Response(serializer.data)
+
+    def retrieve(self, request, *args,**kwargs):
+        instance= get_object_or_404(self.queryset, slug=kwargs['slug'])
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+    def delete(self, request, *args, **kwargs):
+        instance = get_object_or_404(self.queryset,author=request.user.profile,pk=kwargs["id"])
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+
+#/comments
+class CommentList(ListCreateAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = (IsGetOrIsAuthenticated,)
+
+    def perform_create(self, serializer):
+        post=Post.objects.get(slug=self.request.data['slug'])
+        return serializer.save(user=self.request.user,post=post, **self.kwargs)
+
+#/profile
+class ProfileDetail(RetrieveUpdateAPIView):
+    queryset = Profile.objects.all()
+    serializer_class = ProfileSerializer
+    permission_classes = (IsGetOrIsAuthenticated,)
+    parser_classes = (JSONParser,MultiPartParser)
+
+    def patch(self, request, *args, **kwargs):
+        if request.user:
+            links=[]
+            if "links" in request.data:
+                 links=json.loads(request.data["links"])
+                 linkSet=SocialLinkSerializer(data=links,many=True)
+                 linkSet.is_valid(raise_exception=True)
+            instance = get_object_or_404(self.queryset, user=request.user)
+            serializer = self.get_serializer(instance, data=request.data,partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(links=links)
+
+            return Response(serializer.data)
+
+        return None
+
+
+    def retrieve(self, request,*args,**kwargs):
+        if "handle" in kwargs:
+            instance= get_object_or_404(self.queryset,handle=kwargs['handle'])
+        elif request.user:
+            instance = get_object_or_404(self.queryset,user=request.user)
+        else:
+            raise Http404('No profile found')
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+
+class TagList(ListAPIView):
+        permission_classes = (IsGetOrIsAuthenticated,)
+        queryset = Tag.objects.all()
+        serializer_class = TagSerializer
+
+        def get_queryset(self):
+
+            queryset =  Tag.objects.all()
+            searchTearm= self.request.query_params.get('q', None)
+            if searchTearm is not None:
+                queryset = queryset.filter(name__icontains=searchTearm)
+            return queryset
+
+        @staticmethod
+        def extractTags(data):
+            tags = json.loads(data["tags"])
+            TagSerializer(data=tags, many=True).is_valid(raise_exception=True)
+            data.pop("tags")
+            return tags
+
+
+
