@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from models import Post, Comment, Profile, SocialLink, Tag
+from .models import Post, Comment, Profile, SocialLink, Tag
 from users.serializers import UserSerializer
 
 
