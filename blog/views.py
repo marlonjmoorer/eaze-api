@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from eaze.permissions import IsGetOrIsAuthenticated
 from .models import Post, Comment, Profile, SocialLink, Tag
-from serializers import PostSerializer, CommentSerializer, ProfileSerializer, SocialLinkSerializer, TagSerializer
+from .serializers import PostSerializer, CommentSerializer, ProfileSerializer, SocialLinkSerializer, TagSerializer
 
 
 import  json
