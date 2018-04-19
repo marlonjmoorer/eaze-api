@@ -19,13 +19,14 @@ from django.conf.urls import url, include
 from rest_framework.authtoken import views as rest_framework_views
 from rest_framework_jwt.views import obtain_jwt_token, refresh_jwt_token
 
-from views import ObtainUserAuthToken
+from views import ObtainUserAuthToken,ObtainUser
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^token/$', obtain_jwt_token, name='token'),
     url(r'^', include('users.urls', namespace='users')),
     url(r'^', include('blog.urls', namespace='post')),
     url(r'^login/$', ObtainUserAuthToken.as_view(), name='login'),
-    url(r'^refresh/$', refresh_jwt_token)
+    url(r'^refresh/$', refresh_jwt_token),
+    url(r'^exchange/$',ObtainUser)
 
 ]

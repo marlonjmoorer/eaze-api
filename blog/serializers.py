@@ -87,12 +87,14 @@ class PostSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
 
         tags = validated_data.pop("tags",None)
-
+        instance.title= validated_data.get("title")
+        instance.body= validated_data.get("body")
 
         if tags:
             tags =[Tag(**data).pk for data in tags]
             instance.tags.clear()
             instance.tags.add(*tags)
+
         instance.save()
         return instance
 

@@ -13,7 +13,6 @@ from eaze.permissions import IsGetOrIsAuthenticated
 from models import Post, Comment, Profile, SocialLink, Tag
 from serializers import PostSerializer, CommentSerializer, ProfileSerializer, SocialLinkSerializer, TagSerializer
 
-from users.models import User
 
 import  json
 
@@ -23,15 +22,26 @@ class PostList(ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = (IsGetOrIsAuthenticated,)
     parser_classes = (JSONParser,MultiPartParser,)
+
+    def get_queryset(self):
+        queryset = Post.objects.filter(draft=False)
+        if self.request.query_params:
+            if "tag" in self.request.query_params:
+                tag = self.request.query_params.get('tag')
+                queryset=queryset.filter(tags__id=tag)
+            if "q" in self.request.query_params:
+                query = self.request.query_params.get('q')
+                queryset = queryset.filter(slug__icontains=query)
+        return queryset
+
+
     def perform_create(self, serializer):
         slug=slugify(self.request.data['title'])
         author=Profile.objects.get(user=self.request.user)
         data = self.request.data.copy()
         tags=[]
         if "tags" in data:
-            tags = json.loads(data["tags"])
-            TagSerializer(data=tags, many=True).is_valid(raise_exception=True)
-            data.pop("tags")
+            tags=TagList.extractTags(data)
         return serializer.save(author=author,tags=tags,slug=slug ,**self.kwargs)
 
 class PostByAuthor(ListAPIView):
@@ -82,10 +92,8 @@ class PostDetail(RetrieveUpdateDestroyAPIView):
     def update(self, request, *args, **kwargs):
         tags = []
         data=request.data.copy()
-        if "tags" in request.data:
-            tags=json.loads(request.data["tags"])
-            TagSerializer(data=json.loads(request.data["tags"]),many=True).is_valid(raise_exception=True)
-            data.pop("tags")
+        if "tags" in data:
+            tags=TagList.extractTags(data)
         instance = get_object_or_404(self.queryset, slug=kwargs['slug'])
         serializer= self.get_serializer(instance, data=data,partial=True)
         serializer.is_valid(raise_exception=True)
@@ -154,12 +162,19 @@ class TagList(ListAPIView):
         serializer_class = TagSerializer
 
         def get_queryset(self):
-            """
-            Optionally restricts the returned purchases to a given user,
-            by filtering against a `username` query parameter in the URL.
-            """
+
             queryset =  Tag.objects.all()
             searchTearm= self.request.query_params.get('q', None)
             if searchTearm is not None:
                 queryset = queryset.filter(name__icontains=searchTearm)
             return queryset
+
+        @staticmethod
+        def extractTags(data):
+            tags = json.loads(data["tags"])
+            TagSerializer(data=tags, many=True).is_valid(raise_exception=True)
+            data.pop("tags")
+            return tags
+
+
+
