@@ -23,7 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
     last_name=serializers.CharField(write_only=True,required=True)
     password= serializers.CharField(write_only=True,min_length=8,
                                     error_messages={"min_length":"Password must be 8 characters"})
-    profile=NestedProfileSerializer()
+    profile=NestedProfileSerializer(required=False)
 
     class Meta:
         model = User

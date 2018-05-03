@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from .models import Post, Comment, Profile, SocialLink, Tag
-from users.serializers import UserSerializer
-
+from users.serializers import UserSerializer, NestedProfileSerializer
 
 
 class SocialLinkSerializer(serializers.ModelSerializer):
@@ -52,19 +51,25 @@ class ProfileSerializer(serializers.ModelSerializer):
         return instance
 
 class CommentSerializer(serializers.ModelSerializer):
-    user =  UserSerializer(read_only=True)
+    profile=NestedProfileSerializer(read_only=True)
+    parent=serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(),allow_null=True,required=False)
+    hasReplies = serializers.SerializerMethodField('check_replies')
+    replyCount = serializers.SerializerMethodField('get_reply_count')
+    def check_replies(self, comment):
+        return Comment.objects.filter(parent=comment).exists()
+    def get_reply_count(self,comment):
+        return Comment.objects.filter(parent=comment).count()
     class Meta:
         model=Comment
-        fields=("user","body","created")
-    def create(self, validated_data):
-       comment=Comment.objects.create(**validated_data)
-       return comment
+        fields=("id","profile","body","created","hasReplies","parent","replyCount")
+
+
 
 class PostSerializer(serializers.ModelSerializer):
 
     title=serializers.CharField(required=True)
     body= serializers.CharField(required=True)
-    tags=  TagSerializer(many=True) #serializers.PrimaryKeyRelatedField(many=True,queryset=Tag.objects.all())
+    tags=  TagSerializer(many=True)
     posted=serializers.DateField(required=False)
     author=ProfileSerializer(read_only=True)
     comments = CommentSerializer(many=True,read_only=True)
@@ -94,7 +99,6 @@ class PostSerializer(serializers.ModelSerializer):
             tags =[Tag(**data).pk for data in tags]
             instance.tags.clear()
             instance.tags.add(*tags)
-
         instance.save()
         return instance
 

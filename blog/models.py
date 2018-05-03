@@ -44,7 +44,8 @@ class Post(models.Model):
 
 class Comment(models.Model):
     body= models.TextField(max_length=20000)
-    user=models.ForeignKey(User)
+    profile=models.ForeignKey(Profile)
+    parent= models.ForeignKey('self',null=True,blank=True)
     post=models.ForeignKey(Post,related_name='comments')
     created= models.DateField(db_index=True, auto_now_add=True)
 
