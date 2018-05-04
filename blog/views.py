@@ -24,13 +24,7 @@ class PostList(ListCreateAPIView):
     parser_classes = (JSONParser,MultiPartParser,)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('slug','tags__name','title','author__handle')
-    def get_queryset(self):
-        queryset = Post.objects.filter(draft=False)
-        if self.request.query_params:
-            if "tag" in self.request.query_params:
-                tag = self.request.query_params.get('tag')
-                queryset=queryset.filter(tags__id=tag)
-        return queryset
+
 
 
     def perform_create(self, serializer):
@@ -189,7 +183,7 @@ class TagList(ListAPIView):
         queryset = Tag.objects.all()
         serializer_class = TagSerializer
         filter_backends = (filters.SearchFilter,)
-        search_fields = ('name',)
+        search_fields = ('name','slug',)
 
         @staticmethod
         def extractTags(data):
