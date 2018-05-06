@@ -23,7 +23,7 @@ from .views import ObtainUserAuthToken,ObtainUser
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^token/$', obtain_jwt_token, name='token'),
-    #url(r'^', include('users.urls')),
+    url(r'^', include('users.urls')),
     url(r'^', include('blog.urls')),
     url(r'^login/$', ObtainUserAuthToken.as_view(), name='login'),
     url(r'^refresh/$', refresh_jwt_token),
