@@ -1,173 +1,81 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 from django.http import Http404
-from django.shortcuts import get_object_or_404,get_list_or_404
 from django.template.defaultfilters import slugify
-from rest_framework.generics import ListCreateAPIView,RetrieveUpdateAPIView, ListAPIView,UpdateAPIView,RetrieveUpdateDestroyAPIView
-from rest_framework.mixins import UpdateModelMixin
-from rest_framework.parsers import FileUploadParser, JSONParser, MultiPartParser, FormParser
+from rest_framework import filters
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework import status, filters
-from eaze.permissions import IsGetOrIsAuthenticated
-from .models import Post, Comment, Profile, SocialLink, Tag
-from .serializers import PostSerializer, CommentSerializer, ProfileSerializer, SocialLinkSerializer, TagSerializer
-
-
-import  json
-
-#/post
-class PostList(ListCreateAPIView):
-    queryset = Post.objects.filter(draft=False)
-    serializer_class = PostSerializer
-    permission_classes = (IsGetOrIsAuthenticated,)
-    parser_classes = (JSONParser,MultiPartParser,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('slug','tags__name','title','author__handle')
-
-
-
-    def perform_create(self, serializer):
-        slug=slugify(self.request.data['title'])
-        author=Profile.objects.get(user=self.request.user)
-        data = self.request.data.copy()
-        tags=[]
-        if "tags" in data:
-            tags=TagList.extractTags(data)
-        return serializer.save(author=author,tags=tags,slug=slug ,**self.kwargs)
-
-class PostDetail(RetrieveUpdateDestroyAPIView):
-
+from rest_framework.utils import json
+from rest_framework.viewsets import ModelViewSet
+from blog.models import *
+from blog.serializers import *
+from eaze.permissions import IsCreationOrIsAuthenticated,IsGetOrIsAuthenticated
+from rest_framework.decorators import list_route,detail_route
+from django.shortcuts import get_object_or_404,get_list_or_404
+from django_filters.rest_framework import  DjangoFilterBackend
+class PostViewSet(ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
-    permission_classes = (IsGetOrIsAuthenticated,)
-    parser_classes = (JSONParser,MultiPartParser,)
-    def update(self, request, *args, **kwargs):
+    lookup_field = 'slug'
+    filter_fields = ('draft',)
+    filter_backends = (filters.SearchFilter,DjangoFilterBackend,)
+    search_fields = ('slug', 'tags__slug', 'title', 'author__handle')
+
+    def create(self, request, *args, **kwargs):
+        slug = slugify(self.request.data['title'])
+        author = Profile.objects.get(user=self.request.user)
+        data = self.request.data.copy()
         tags = []
-        data=request.data.copy()
         if "tags" in data:
-            tags=TagList.extractTags(data)
-        instance = get_object_or_404(self.queryset, slug=kwargs['slug'])
-        serializer= self.get_serializer(instance, data=data,partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(tags=tags)
+             tags = json.loads(data["tags"])
+             data['tags']=tags
+        post=PostSerializer(data=data)
+        post.is_valid(raise_exception=True)
+        post.save(author=author,tags=tags, slug=slug, **self.kwargs)
+        return Response(post.data)
+
+    @detail_route(methods=["get"])
+    def comments(self,request,pk=None):
+        commnets=Comment.objects.filter(post=pk)
+        serializer =CommentSerializer(commnets,many=True)
         return Response(serializer.data)
 
-    def retrieve(self, request, *args,**kwargs):
-        instance= get_object_or_404(self.queryset, slug=kwargs['slug'])
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
-    def delete(self, request, *args, **kwargs):
-        instance = get_object_or_404(self.queryset,author=request.user.profile,pk=kwargs["id"])
-        instance.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+class TagViewSet(ModelViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+   # permission_classes = (IsGetOrIsAuthenticated,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name', 'slug',)
 
 
-
-
-
-
-
-
-#/comments
-class CommentList(ListCreateAPIView):
-    queryset = Comment.objects.all()
-    serializer_class = CommentSerializer
-    permission_classes = (IsGetOrIsAuthenticated,)
-
-    def perform_create(self, serializer):
-        parent=None
-        post=Post.objects.get(slug=self.request.data['slug'])
-        profile= Profile.objects.get(user=self.request.user)
-        if("parent" in self.request.data):
-            parent=get_object_or_404(self.queryset,id=self.request.data['parent'])
-        return serializer.save(profile=profile,post=post, **self.kwargs)
-
-class CommentListReplies(ListAPIView):
-    queryset = Comment.objects.all()
-    serializer_class = CommentSerializer
-    permission_classes = (IsGetOrIsAuthenticated,)
-
-    def list(self, request, *args, **kwargs):
-
-        replies= get_list_or_404(self.queryset,parent=kwargs["id"])
-        serializer = self.get_serializer(replies,many=True)
-        return Response(serializer.data)
-
-#/profile
-class ProfileDetail(RetrieveUpdateAPIView):
+class ProfileViewSet(ModelViewSet):
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
-    permission_classes = (IsGetOrIsAuthenticated,)
-    parser_classes = (JSONParser,MultiPartParser)
+    lookup_field = 'handle'
 
     def patch(self, request, *args, **kwargs):
         if request.user:
-            links=[]
+            links = []
             if "links" in request.data:
-                 links=json.loads(request.data["links"])
-                 linkSet=SocialLinkSerializer(data=links,many=True)
-                 linkSet.is_valid(raise_exception=True)
+                links = json.loads(request.data["links"])
+                linkSet = SocialLinkSerializer(data=links, many=True)
+                linkSet.is_valid(raise_exception=True)
             instance = get_object_or_404(self.queryset, user=request.user)
-            serializer = self.get_serializer(instance, data=request.data,partial=True)
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save(links=links)
 
             return Response(serializer.data)
 
-        return None
+        raise PermissionDenied(detail="No User was found", code=401)
 
-
-    def retrieve(self, request,*args,**kwargs):
-        if "handle" in kwargs:
-            instance= get_object_or_404(self.queryset,handle=kwargs['handle'])
-        elif request.user:
-            instance = get_object_or_404(self.queryset,user=request.user)
-        else:
-            raise Http404('No profile found')
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
-
-
-class ProfileList(ListAPIView):
-    queryset = Profile.objects.all()
-    serializer_class = ProfileSerializer
-    filter_backends = (filters.SearchFilter,)
-    permission_classes = (IsGetOrIsAuthenticated,)
-    search_fields = ('handle',)
-
-
-class PostByAuthor(ListAPIView):
-    queryset = Post.objects.all()
-    serializer_class = PostSerializer
-    permission_classes = (IsGetOrIsAuthenticated,)
-    def list(self, request, *args, **kwargs):
-        name = kwargs["name"]
-        if (name):
-            user = Profile.objects.get(handle=name)
-            queryset = self.get_queryset()
-            post = queryset.filter(author_id=user.pk)
-            serializer = PostSerializer(post, many=True)
-
-        return Response(serializer.data)
-
-
-class FollowAuthor(UpdateAPIView):
-    queryset = Profile.objects.all()
-    serializer_class = ProfileSerializer
-
-    def patch(self, request, *args, **kwargs):
+    @detail_route(methods=["post"])
+    def follow(self, request, handle):
         if request.user:
-            add = request.data["add"]
-            id = request.data["id"]
             instance = get_object_or_404(self.queryset, user=request.user)
-
-            if not add and instance.following.filter(pk=id).exists():
+            id= get_object_or_404(self.queryset, handle=handle).pk
+            if instance.following.filter(pk=id).exists():
                 instance.following.remove(id)
-            elif add:
-                instance.following.add(id)
             else:
-                raise Http404
+                instance.following.add(id)
             serializer = self.get_serializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -177,20 +85,38 @@ class FollowAuthor(UpdateAPIView):
         raise Http404
 
 
-#/tags
-class TagList(ListAPIView):
-        permission_classes = (IsGetOrIsAuthenticated,)
-        queryset = Tag.objects.all()
-        serializer_class = TagSerializer
-        filter_backends = (filters.SearchFilter,)
-        search_fields = ('name','slug',)
 
-        @staticmethod
-        def extractTags(data):
-            tags = json.loads(data["tags"])
-            TagSerializer(data=tags, many=True).is_valid(raise_exception=True)
-            data.pop("tags")
-            return tags
+    @detail_route()
+    def following(self,request,handle):
+        profile_id = get_object_or_404(self.queryset, handle=handle).pk
+        following=get_list_or_404(self.queryset,followers=profile_id)
+        serializers=self.serializer_class(following,many=True)
+        return  Response(serializers.data)
+
+    @detail_route()
+    def posts(self,request,handle):
+        profile_id=get_object_or_404(self.queryset,handle=handle).pk
+        posts= Post.objects.filter(author=profile_id)
+        serializer =PostSerializer(posts,many=True)
+        return  Response(serializer.data)
+   # permission_classes = (IsGetOrIsAuthenticated,)
+
+class CommentViewSet(ModelViewSet):
+    queryset =  Comment.objects.all()
+    serializer_class = CommentSerializer
+
+    def create(self, request, *args, **kwargs):
+        data = self.request.data.copy()
+        profile = Profile.objects.get(user=self.request.user)
+        post= Post.objects.get(pk=data["post_id"])
+        comment = CommentSerializer(data=data)
+        comment.is_valid(raise_exception=True)
+        comment.save(profile=profile,post=post, **self.kwargs)
+        return Response(comment.data)
 
 
-
+    @detail_route()
+    def replies(self, request, pk):
+        replies =Comment.objects.filter(parent=pk)
+        serializer = CommentSerializer(replies, many=True)
+        return Response(serializer.data)

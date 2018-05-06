@@ -32,7 +32,6 @@ class ProfileSerializer(serializers.ModelSerializer):
         photo = validated_data.get("photo",None)
         if photo and  not isinstance(photo, str):
              instance.photo=photo
-
         instance.save()
         links= validated_data.get("links")
         if links:
@@ -47,7 +46,6 @@ class ProfileSerializer(serializers.ModelSerializer):
                         link.save()
                 else:
                     SocialLink.objects.create(profile=instance,**linkdata)
-
         return instance
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -55,13 +53,21 @@ class CommentSerializer(serializers.ModelSerializer):
     parent=serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(),allow_null=True,required=False)
     hasReplies = serializers.SerializerMethodField('check_replies')
     replyCount = serializers.SerializerMethodField('get_reply_count')
+    post=serializers.PrimaryKeyRelatedField(read_only=True)
     def check_replies(self, comment):
         return Comment.objects.filter(parent=comment).exists()
     def get_reply_count(self,comment):
         return Comment.objects.filter(parent=comment).count()
     class Meta:
         model=Comment
-        fields=("id","profile","body","created","hasReplies","parent","replyCount")
+        fields=("id","profile","body","created","hasReplies","parent","replyCount","post")
+
+    # def create(self, validated_data):
+    #     post= validated_data.pop("post")
+    #     comment= Comment(**validated_data)
+    #     comment.post=post
+    #     comment.save()
+    #     return comment
 
 
 
@@ -81,7 +87,6 @@ class PostSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         tags = validated_data.pop("tags", None)
         instance =Post(**validated_data)
-        instance.save()
         if tags:
             tags =[Tag(**data).pk for data in tags]
             instance.tags.add(*tags)

@@ -31,3 +31,8 @@ def generate_username(first_name, last_name):
             if index > 10000:
                 raise Exception("Name is too common!")
 
+# def extractTags(data):
+#     tags = json.loads(data["tags"])
+#     TagSerializer(data=tags, many=True).is_valid(raise_exception=True)
+#     data.pop("tags")
+#     return tags

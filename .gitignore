@@ -4,3 +4,4 @@ venv/*
 */migrations/*
 */dev_settings.py
 local.py
+sandbox.py
